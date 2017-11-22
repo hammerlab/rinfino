@@ -6,7 +6,7 @@ Description: Helper scripts to prepare data for infino, and eventually to run in
     Infino is a computational biology tool that deconvolutes bulk RNAseq data to determine the 
     proportions of cell types (tumor-infiltrating immune cells, stromal cells, and tumor cells)
     in the sequenced sample.
-Depends: R (>= 3.4.2)
+Depends: R (>= 3.3.2)
 License: Apache 2.0
 Encoding: UTF-8
 LazyData: true
