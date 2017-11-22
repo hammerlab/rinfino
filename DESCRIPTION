@@ -1,9 +1,13 @@
 Package: rinfino
-Title: What the Package Does (one line, title case)
+Title: R-friendly client to run infino (http://github.com/hammerlab/infino)
 Version: 0.0.0.9000
-Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
+Authors@R: person("Jacqueline", "Buros Novik", email = "jackinovik@gmail.com", role = c("aut", "cre"))
+Description: Helper scripts to prepare data for infino, and eventually to run infino.
+    Infino is a computational biology tool that deconvolutes bulk RNAseq data to determine the 
+    proportions of cell types (tumor-infiltrating immune cells, stromal cells, and tumor cells)
+    in the sequenced sample.
 Depends: R (>= 3.4.2)
-License: What license is it under?
+License: Apache 2.0
 Encoding: UTF-8
 LazyData: true
+Suggests: testthat
