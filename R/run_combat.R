@@ -171,7 +171,7 @@ transpose2gxs <- function(df, trans=NULL) {
 #' @export
 filter_genes <- function(df, 
                          n_genes = 900,
-                         genelist = readr::read_tsv('/data/rcc-immuneinf/marker_genes.txt', col_names=c('_GENE')),
+                         genelist = rinfino::genelist,
                          include_random = TRUE) {
     dff <- df %>% dplyr::semi_join(genelist, by = '_GENE')
     if (include_random) {
