@@ -6,9 +6,8 @@
 If `include_random` is true, will optionally select random genes
 to round out the comparison}
 \usage{
-filter_genes(df, n_genes = 900,
-  genelist = readr::read_tsv("/data/rcc-immuneinf/marker_genes.txt", col_names
-  = c("_GENE")), include_random = TRUE)
+filter_genes(df, n_genes = 900, genelist = rinfino::genelist,
+  include_random = TRUE)
 }
 \arguments{
 \item{df}{(tbl_df) SxG df with expression data, where sampleinfo stored in sampleinfo attr}
