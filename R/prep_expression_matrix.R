@@ -25,8 +25,6 @@ prep_expression_matrix <- function(root, output_arg,
     # ---- Helper functions ----
     tmpdir <- tempdir()
     dir.create(tmpdir, recursive=T, showWarnings=F)
-    #' simple wrapper for running shell commands
-    # (only tested on linux)
     shell <- function(cmdargs, command="bash") {
         # We need the full path to the main program
         command_path <- Sys.which(command)

@@ -54,7 +54,9 @@ load_all_expdata <- function(path, batch=NULL, ...) {
 
 
 #' merge expdata dfs together, combining sampleinfo
-#' @param dflist
+#' @param dflist (list) list of dataframes imported using load_expdata
+#' @param fill (value or NULL) how to fill in NA values, if at all
+#' @param filter (function) function to apply to rows, filtering genes/transcripts from result
 #' @import purrr dplyr
 #' @export
 merge_expdata <- function(dflist, fill=NULL, filter=function(x) {max(x) > 0}) {
