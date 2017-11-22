@@ -10,5 +10,18 @@ Depends: R (>= 3.3.2)
 License: Apache 2.0
 Encoding: UTF-8
 LazyData: true
+Requires: biomaRt,
+  dplyr,
+  ggplot2,
+  glue,
+  lubridate,
+  purrr,
+  purrrlyr,
+  readr,
+  stringr,
+  sva,
+  tibble,
+  tximport,
+  txtplot
 Suggests: testthat
 RoxygenNote: 6.0.1
