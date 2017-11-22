@@ -1,0 +1,9 @@
+{
+	"n_targets": 173259,
+	"n_bootstraps": 30,
+	"n_processed": 13541967,
+	"kallisto_version": "0.43.0",
+	"index_version": 10,
+	"start_time": "Sun Nov 12 20:44:07 2017",
+	"call": "kallisto quant -i /input/Homo_sapiens.GRCh38.cdna.all.kallisto.idx -b 30 -t 24 --bias --single -l 200 -s 5 -o output/ERR1906207.fastq.gz// output/ERR1906207.fastq.gz/fastq_trimmed/ERR1906207_trimmed.fq"
+}
