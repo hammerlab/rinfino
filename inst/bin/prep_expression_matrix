@@ -1,0 +1,45 @@
+#! /usr/bin/env Rscript
+"Read Kallisto files in ROOT_DIR/*/abundance.tsv; write as expression matrix in tsv format.
+
+Usage: prep_expression_matrix.R [options] ROOTDIR
+
+Options:
+  -h --help           show this help [default: FALSE]
+  -c --cohort COHORT  cohort name or description [default: cohort]
+  -o FILE             specify output file [default: {ROOTDIR}/gene-expression-matrix-{cohort}-{metric}-{today()}.tsv]
+  -s --skip           skip folders without kallisto output [default: TRUE]
+  -m --metric METRIC  metric to summarize [default: scaledTPM]
+  -b --by BY          name of field for genes/transcripts [default: Gene_symbol]
+  -g --gene           summarize results by gene [default: TRUE]
+  -t --transcript     summarize results by transcript [default: FALSE]
+
+Arguments:
+  ROOTDIR directory containing kallisto output (formatted like: ROOTDIR/output/{sample_name}/abundance.tsv)
+" -> doc
+
+## process args
+if (exists('my_opts')) {
+    cat('processing custom options', "\n")
+	opts <- docopt(doc, my_opts, help=TRUE, quoted_args=TRUE)
+} else {
+    opts <- docopt(doc)
+}
+
+# ---- process options ----
+root <- opts$ROOTDIR
+skip_missing <- opts$skip # whether to skip folders with non-existent files
+cohort <- opts$cohort
+metric <- opts$metric
+by <- opts$by # name of column describing gene or transcript
+by_gene <- opts$gene # otherwise, by transcript
+output_arg <- glue::glue(opts$o)
+
+library(rinfino)
+rinfino::prep_expression_matrix(root = root,
+                                output_arg = output_arg,
+                                skip_missing = skip_missing,
+                                cohort = cohort,
+                                metric = metric,
+                                by = by,
+                                by_gene = by_gene)
+# vim: ft=r
