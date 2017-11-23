@@ -18,14 +18,14 @@ load_expdata <- function(path, gene_col='Gene_symbol', data_loader=readr::read_t
                          filter=NULL, trans=NULL, ...) {
     df <- data_loader(path, ...) %>%
         dplyr::rename(`_GENE` = !!gene_col)
-    
+
     # filter and/or transform data on load
     if (!is.null(filter) || !is.null(trans)) {
         df <- filter_gxs_expdata(df, fun = filter, trans = trans)
     }
 
     # annotate sampleinfo
-    sampleinfo <- dplyr::tbl_df(list(`_SAMPLE_ID` = df %>% dplyr::select(-`_GENE`) %>% names())) %>% 
+    sampleinfo <- dplyr::tbl_df(list(`_SAMPLE_ID` = df %>% dplyr::select(-`_GENE`) %>% names())) %>%
         dplyr::mutate(sample_id = stringr::str_replace(`_SAMPLE_ID`, pattern = 'X([[:digit:]].*)', replacement='\\1'),
                       batch = !!batch
                       )
@@ -33,12 +33,12 @@ load_expdata <- function(path, gene_col='Gene_symbol', data_loader=readr::read_t
 }
 
 
-#' load several expdata files all at once 
+#' load several expdata files all at once
 #'
 #' @note this function is a lightweight wrapper around \code{load_expdata}.
 #'       Please see ?merge_expdata for more info on parameters
-#' 
-#' @param path (vector or list) filepaths containing expression matrices 
+#'
+#' @param path (vector or list) filepaths containing expression matrices
 #' @param batch (vector or list) batch name corresponding to each filepath
 #' @param ... other params to \code{load_expdata}, each of which can be a vector or singleton
 #' @return list of imported dfs returned by load_expdata
@@ -60,7 +60,7 @@ load_all_expdata <- function(path, batch=NULL, ...) {
 #' @import purrr dplyr
 #' @export
 merge_expdata <- function(dflist, fill=NULL, filter=function(x) {max(x) > 0}) {
-    df <- dflist %>% 
+    df <- dflist %>%
         purrr::reduce(dplyr::full_join, by = '_GENE')
     if ((!is.null(fill) && !is.na(fill)) || !is.null(filter))
         df <- filter_expdata(df, trans = function(x) {ifelse(is.na(x), fill, x)},
@@ -86,19 +86,19 @@ expdata_as_matrix <- function(df, trans=NULL) {
     expmat
 }
 
-#' helper function to filter gxs expdata more efficiently 
+#' helper function to filter gxs expdata more efficiently
 #' than can be done using data.frame tools
-#' 
+#'
 #' @note Default behavior with both fun & trans NULL is to transform df to matrix & back
 #'       This is retained for purposes of performance testing
-#' 
+#'
 #' @param df (tbl_df or data.frame) GxS expression data with a column `_GENE`
 #' @param fun (function) optional function to be applied to each row (GENE) of expression data
 #'               returns a boolean value (TRUE: keep, FALSE: discard)
 #' @param trans (function) optional transformation to apply to expression data AFTER filtering, for convenience
 #' @import dplyr tibble
 #' @return filtered df (tbl_df) containing filtered and/or transformed GxS expression data
-filter_gxs_expdata <- function(df, fun=NULL, trans=NULL) {
+filter_gxs_expdata <- function(df, fun=function(x) {max(x)>0}, trans=NULL) {
     expmat <- as.matrix(df %>% dplyr::select(-`_GENE`))
     colnames(expmat) <- df %>% dplyr::select(-`_GENE`) %>% names()
     rownames(expmat) <- df %>% dplyr::select(`_GENE`) %>% unlist()
@@ -126,11 +126,11 @@ filter_expdata <- filter_gxs_expdata
 #'
 #' Additionally, while data are in matrix form, one can apply a transformation function
 #' more efficiently than while operating on the full dataframe. Thus, `trans` is supported.
-#' 
+#'
 #' @param df (tbl_df or data.frame) containing expression data to be transposed
 #' @param trans (function) optional function to apply to expression data during transpose
 #' @param current_colname (string) name of field to create after transform, holding values of current colnames
-#' @param current_rowname (string) name of field existing in df, holding current rownames 
+#' @param current_rowname (string) name of field existing in df, holding current rownames
 #' @import dplyr tibble
 #' @return transposed df, of type tbl_df
 #' @export
@@ -141,7 +141,7 @@ transpose_expdata <- function(df, trans=NULL, current_colname, current_rowname) 
     if (!is.null(trans))
         expmat <- trans(expmat)
     transmat <- t(expmat)
-    df <- as.data.frame(transmat) %>% 
+    df <- as.data.frame(transmat) %>%
         tibble::rownames_to_column(current_colname)
 }
 
@@ -166,10 +166,10 @@ transpose2gxs <- function(df, trans=NULL) {
 #' @param n_genes (int) desired total number of genes (irrelevant if include_random == FALSE)
 #' @param genelist (tbl_df) contains column `_GENE` containing list of genes to filter to
 #' @param include_random (bool) whether to sample from remaining genes to reach `n_genes`
-#' @import dplyr 
+#' @import dplyr
 #' @return tbl_df containing filtered expression data, with sampleinfo attr
 #' @export
-filter_genes <- function(df, 
+filter_genes <- function(df,
                          n_genes = 900,
                          genelist = rinfino::genelist,
                          include_random = TRUE) {
@@ -177,7 +177,7 @@ filter_genes <- function(df,
     if (include_random) {
         # select random set of genes to get to desired `n_genes`
         n_random <- n_genes - nrow(dff)
-        random_genes <- df %>% 
+        random_genes <- df %>%
             dplyr::select(`_GENE`) %>%
             dplyr::anti_join(genelist, by = `_GENE`) %>%
             dplyr::sample_n(n_random)
@@ -193,7 +193,7 @@ filter_genes <- function(df,
 #' @param df (tbl_df) SxG expression data, with batch stored in sampleinfo attribute
 #' @param mod (formula) adjustment for any linear covariates in sampleinfo
 #' @param trans (formula) optional formula to apply to expression data
-#' @import sva 
+#' @import sva
 #' @export
 run_combat <- function(df, mod = ~ 1, trans=log1p) {
     expmat <- expdata_as_matrix(df, trans=trans)
@@ -216,7 +216,7 @@ transpose2sxg <- function(df, trans=NULL) {
 }
 
 #' run PCA analysis on expression data
-#' 
+#'
 #' @param df (tbl_df) GxS expression data, with columns indicating sample_ids
 #' @param plot (boolean) if TRUE, also plot PCA results
 #' @param trans (function) if provided, transform expression data prior to PCA
@@ -229,18 +229,18 @@ run_pca <- function(df, use_ggplot=TRUE, trans=log1p, ...) {
 
     # merge in sampleinfo (sample_id & batch)
     sampleinfo <- attr(df, 'sampleinfo')
-    tdf <- tdf %>% 
+    tdf <- tdf %>%
         dplyr::left_join(sampleinfo, by = '_SAMPLE_ID')
-    
+
     # run pca
     pca <- prcomp(tdf %>% dplyr::select(-`_SAMPLE_ID`, -sample_id, -batch),
                   center = TRUE,
                   scale. = TRUE)
 
     if (use_ggplot) {
-        pcadf <- tbl_df(pca$x) %>% 
+        pcadf <- tbl_df(pca$x) %>%
             bind_cols(sampleinfo)
-        pcaplot <- ggplot2::ggplot(pcadf, aes(x = 'PC1', y = 'PC2', group = 'batch', colour = 'batch')) + 
+        pcaplot <- ggplot2::ggplot(pcadf, ggplot2::aes(x = PC1, y = PC2, group = batch, colour = batch)) +
             ggplot2::geom_point()
         print(pcaplot)
     } else {
