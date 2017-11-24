@@ -1,6 +1,6 @@
 # rinfino
 
-The goal of rinfino is to ...
+The goal of rinfino is to provide helper-functions and (eventually) an interface to [infino](https://github.com/hammerlab/infino). Infino is a computational biology tool that estimates the composition of immune infiltrate in a bulk-biopsy sample given RNAseq data using a Bayesian hierarchical mixture model. 
 
 ## Installation
 
@@ -30,8 +30,9 @@ data("rcctils_expression")
 pca_results <- 
   rcctils_expression %>% 
   filter_expdata(fun = function(x) {max(x)>0}) %>% 
-  run_pca(plot=F)
+  run_pca(use_ggplot=T)
 ```
+![alt text](example_pca_plot.png)
 
 Alternatively, you might want to load data from multiple sources (say, TCGA & a sample of isolated tils), filter to marker genes & run combat:
 
