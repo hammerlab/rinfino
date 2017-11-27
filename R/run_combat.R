@@ -268,31 +268,21 @@ run_combat <- function(df, mod = ~ 1, trans=log1p, batch = 'batch') {
 }
 
 
-#' Run cibersort on expression data
-#' @import Rserve glue readr dplyr 
+#' Test cibersort using one of the expression matrices provided
 #' @export
-run_cibersort <- function(df,
-                          output_file = file.path(tmpdir, 'cibersort_output.tsv'),
-                          error_file = file.path(tmpdir, 'cibersort_errors.txt'),
-                          cibersort_home = '~/cibersort',
-                          training_data = NULL,
-                          trans = NULL, tmpdir = tempdir(), filter_fun = function(x) {max(x)>0}) {
-    # prepare input matrix, filtered & possibly transformed
-    if (is.null(training_data)) {
-        lm22_path <- file.path(cibersort_home, 'LM22.txt')
-        lm22_genes <- readr::read_tsv(lm22_path) %>% 
-            dplyr::mutate(`_GENE` = `Gene symbol`)
-        training_input <- lm22_path
-    }
-    # write matrix to file, in order to call cibersort
-    input_file = file.path(tmpdir, 'cibersort_input.tsv')
-    expmat <- df %>%
-        filter_genes(genelist = lm22_genes, include_random = FALSE) %>%
-        filter_expdata(fun = filter_fun, trans = trans) %>%
-        dplyr::rename(Gene_symbols = `_GENE`) %>%
-        readr::write_tsv(path = input_file)
-    # call cibersort
-    cat(glue::glue("Running cibersort in {tmpdir}"))
+test_cibersort <- function(tmpdir = tempdir(), output_file = file.path(tmpdir, 'cibersort_output.tsv'), test_case = 'ExampleMixtures-GEPs.txt',
+                           cibersort_home = '~/cibersort', input_file = file.path(cibersort_home, test_case)) {
+    execute_cibersort(tmpdir = tmpdir, cibersort_home = cibersort_home, input_file = input_file,
+                      output_file = output_file)
+}
+
+execute_cibersort <- function(input_file, 
+                              output_file,
+                              tmpdir = tempdir(),
+                              cibersort_home = '~/cibersort',
+                              training_input = file.path(cibersort_home, 'LM22.txt'),
+                              error_file = file.path(tmpdir, 'cibersort_errors.txt')) {
+    cat(glue::glue("Running cibersort in {tmpdir}\n"))
     Rserve::Rserve(args='--no-save')
     return_code <- try(shell(command = "java",
                              cmdargs = glue::glue("-Xmx10g -Xms3g",
@@ -304,6 +294,37 @@ run_cibersort <- function(df,
     shell(command = 'pkill', cmdargs = "-9 Rserve")
     stopifnot(!inherits(return_code, 'try-error'))
     stopifnot(return_code == 0)
+}
+
+
+#' Run cibersort on expression data
+#' @import Rserve glue readr dplyr 
+#' @export
+run_cibersort <- function(df,
+                          output_file = file.path(tmpdir, 'cibersort_output.tsv'),
+                          error_file = file.path(tmpdir, 'cibersort_errors.txt'),
+                          cibersort_home = '~/cibersort',
+                          training_data = NULL,
+                          trans = NULL, tmpdir = tempdir(), filter_fun = NULL) {
+    # prepare input matrix, filtered & possibly transformed
+    if (is.null(training_data)) {
+        lm22_path <- file.path(cibersort_home, 'LM22.txt')
+        lm22_genes <- readr::read_tsv(lm22_path) %>% 
+            dplyr::mutate(`_GENE` = `Gene symbol`)
+        training_input <- lm22_path
+    }
+    # write matrix to file, in order to call cibersort
+    input_file = file.path(tmpdir, 'cibersort_input.tsv')
+    expmat <- df %>%
+        transform_sampleid(fun = function(x) stringr::str_replace(x, pattern = '[[:punct:]]', replacement = '.')) %>%
+        filter_genes(genelist = lm22_genes, include_random = FALSE) %>%
+        filter_expdata(fun = filter_fun, trans = trans) %>%
+        dplyr::rename(Gene_symbols = `_GENE`) %>%
+        readr::write_tsv(path = input_file)
+    # execute cibersort
+    execute_cibersort(tmpdir=tmpdir, cibersort_home=cibersort_home, 
+                      input_file=input_file, training_input=training_input,
+                      output_file=output_file, error_file=error_file)
     # read & format results 
     cibersort <- readr::read_delim(output_file, delim = '\t', comment=">", trim_ws = TRUE)
     stopifnot(nrow(cibersort)>0)

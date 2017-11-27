@@ -4,12 +4,12 @@
 \alias{update_sampleinfo}
 \title{Update sampleinfo affiliated with expdata}
 \usage{
-update_sampleinfo(expdata, sampleinfo, sample_id = "_SAMPLE_ID")
+update_sampleinfo(expdata, df, sample_id = "_SAMPLE_ID")
 }
 \arguments{
 \item{expdata}{(tbl_df or data.frame) sample expression data in GxS format, with attribute sampleinfo}
 
-\item{sampleinfo}{(tbl_df or data.frame) sample-specific info to be merged in with sampleinfo}
+\item{df}{(tbl_df or data.frame) sample-specific info to be merged in with sampleinfo}
 
 \item{sample_id}{(str) name of column in new sampleinfo containing `_SAMPLE_ID`}
 }

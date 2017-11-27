@@ -4,7 +4,7 @@
 \alias{run_combat}
 \title{Run combat to normalize for batch effects}
 \usage{
-run_combat(df, mod = ~1, trans = log1p)
+run_combat(df, mod = ~1, trans = log1p, batch = "batch")
 }
 \arguments{
 \item{df}{(tbl_df) SxG expression data, with batch stored in sampleinfo attribute}
