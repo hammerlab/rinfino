@@ -33,6 +33,38 @@ load_expdata <- function(path, gene_col='Gene_symbol', data_loader=readr::read_t
 }
 
 
+
+#' Transform sample_id in both expdata & in attributes
+#' @param expdata (tbl_df or data.frame) expression data in GxS format, with sampleinfo attribute
+#' @param fun (function) function to apply to sample-id column names, and attributes
+#' @return transformed expdata object
+#' @import dplyr
+#' @export
+transform_sampleid <- function(expdata, fun) {
+  names(expdata)[-1] <- fun(names(expdata)[-1]) # TODO filter by name, not position
+  sampleinfo <- attr(expdata, 'sampleinfo') %>% 
+        dplyr::mutate(`_SAMPLE_ID` = fun(`_SAMPLE_ID`))
+  attr(expdata, 'sampleinfo') <- sampleinfo
+  expdata
+}
+
+
+#' Update sampleinfo affiliated with expdata
+#' @param expdata (tbl_df or data.frame) sample expression data in GxS format, with attribute sampleinfo
+#' @param sampleinfo (tbl_df or data.frame) sample-specific info to be merged in with sampleinfo
+#' @param sample_id (str) name of column in new sampleinfo containing `_SAMPLE_ID`
+#' @import dplyr
+#' @export 
+update_sampleinfo <- function(expdata, sampleinfo, sample_id = '_SAMPLE_ID') {
+	sampleinfo2 <- sampleinfo %>% 
+    	dplyr::left_join(df %>% dplyr::mutate(`_SAMPLE_ID` = !!sample_id),
+                         suffix = c('.expdata', ''),
+                         by = '_SAMPLE_ID')
+    attr(expdata, 'sampleinfo') <- sampleinfo2
+	expdata
+}
+
+
 #' load several expdata files all at once
 #'
 #' @note this function is a lightweight wrapper around \code{load_expdata}.
@@ -223,7 +255,7 @@ transpose2sxg <- function(df, trans=NULL) {
 #' @return pca object for each sample run (columns in the provided df)
 #' @import dplyr ggplot2 txtplot
 #' @export
-run_pca <- function(df, use_ggplot=TRUE, trans=log1p, ...) {
+run_pca <- function(df, use_ggplot=TRUE, trans=log1p, group = 'batch', colour = 'batch', ...) {
     # transform df to SxG orientation, possibly applying `trans` function
     tdf <- transpose2sxg(df, trans=trans)
 
@@ -240,7 +272,7 @@ run_pca <- function(df, use_ggplot=TRUE, trans=log1p, ...) {
     if (use_ggplot) {
         pcadf <- tbl_df(pca$x) %>%
             bind_cols(sampleinfo)
-        pcaplot <- ggplot2::ggplot(pcadf, ggplot2::aes(x = PC1, y = PC2, group = batch, colour = batch)) +
+        pcaplot <- ggplot2::ggplot(pcadf, ggplot2::aes_(x = 'PC1', y = 'PC2', group = group, colour = colour, ...)) +
             ggplot2::geom_point()
         print(pcaplot)
     } else {
