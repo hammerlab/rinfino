@@ -2,10 +2,10 @@
 % Please edit documentation in R/run_combat.R
 \name{filter_gxs_expdata}
 \alias{filter_gxs_expdata}
-\title{helper function to filter gxs expdata more efficiently 
+\title{helper function to filter gxs expdata more efficiently
 than can be done using data.frame tools}
 \usage{
-filter_gxs_expdata(df, fun = NULL, trans = NULL)
+filter_gxs_expdata(df, fun = function(x) {     max(x) > 0 }, trans = NULL)
 }
 \arguments{
 \item{df}{(tbl_df or data.frame) GxS expression data with a column `_GENE`}
@@ -19,7 +19,7 @@ returns a boolean value (TRUE: keep, FALSE: discard)}
 filtered df (tbl_df) containing filtered and/or transformed GxS expression data
 }
 \description{
-helper function to filter gxs expdata more efficiently 
+helper function to filter gxs expdata more efficiently
 than can be done using data.frame tools
 }
 \note{

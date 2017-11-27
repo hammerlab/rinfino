@@ -4,7 +4,8 @@
 \alias{run_pca}
 \title{run PCA analysis on expression data}
 \usage{
-run_pca(df, use_ggplot = TRUE, trans = log1p, ...)
+run_pca(df, use_ggplot = TRUE, trans = log1p, group = "batch",
+  colour = "batch", ...)
 }
 \arguments{
 \item{df}{(tbl_df) GxS expression data, with columns indicating sample_ids}
