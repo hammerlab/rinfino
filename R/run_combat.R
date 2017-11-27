@@ -51,13 +51,14 @@ transform_sampleid <- function(expdata, fun) {
 
 #' Update sampleinfo affiliated with expdata
 #' @param expdata (tbl_df or data.frame) sample expression data in GxS format, with attribute sampleinfo
-#' @param sampleinfo (tbl_df or data.frame) sample-specific info to be merged in with sampleinfo
+#' @param df (tbl_df or data.frame) sample-specific info to be merged in with sampleinfo
 #' @param sample_id (str) name of column in new sampleinfo containing `_SAMPLE_ID`
 #' @import dplyr
 #' @export 
-update_sampleinfo <- function(expdata, sampleinfo, sample_id = '_SAMPLE_ID') {
+update_sampleinfo <- function(expdata, df, sample_id = '_SAMPLE_ID') {
+    sampleinfo <- attr(expdata, 'sampleinfo')
 	sampleinfo2 <- sampleinfo %>% 
-    	dplyr::left_join(df %>% dplyr::mutate(`_SAMPLE_ID` = !!sample_id),
+    	dplyr::left_join(df %>% dplyr::mutate_(.dots = list(`_SAMPLE_ID` = sample_id)),
                          suffix = c('.expdata', ''),
                          by = '_SAMPLE_ID')
     attr(expdata, 'sampleinfo') <- sampleinfo2
@@ -103,6 +104,18 @@ merge_expdata <- function(dflist, fill=NULL, filter=function(x) {max(x) > 0}) {
 }
 
 
+#' convert expdaat (as GxS matrix) to tbl_df format
+#' @param expmat (matrix) expression data in GxS format
+#' @param sampleinfo (tbL_df or data.frame) sampleinfo with `_SAMPLE_ID` column corresponding to column names in expmat
+#' @return expdata (tbl_df) containing expression data, with sampleinfo attribute
+#' @import tibble
+#' @export
+expdata_as_df <- function(expmat, sampleinfo) {
+    expdata <- as.data.frame(expmat) %>%
+        tibble::rownames_to_column('_GENE')
+    structure(expdata, sampleinfo = sampleinfo)
+}
+
 #' convert expdata (as GxS tbl_df) to matrix format
 #' @param df (tbl_df or data.frame) a GxS data frame containing expression data
 #' @param trans (function) optional transformation to apply to values in matrix
@@ -143,13 +156,29 @@ filter_gxs_expdata <- function(df, fun=function(x) {max(x)>0}, trans=NULL) {
     # more efficient to do transformation here
     if (!is.null(trans))
         expmat <- trans(expmat)
+    
     # this is most expensive line in this code
-    df <- as.data.frame(expmat) %>%
-        tibble::rownames_to_column('_GENE')
-    structure(df, sampleinfo = sampleinfo)
+    expdata_as_df(expmat, sampleinfo = sampleinfo)
 }
-filter_expdata <- filter_gxs_expdata
 
+
+#' helper function to filter gxs expdata more efficiently
+#' than can be done using data.frame tools
+#'
+#' @param df (tbl_df or data.frame) GxS expression data with a column `_GENE`
+#' @param fun (function) optional function to be applied to each row (GENE) of expression data
+#'               returns a boolean value (TRUE: keep, FALSE: discard)
+#' @param trans (function) optional transformation to apply to expression data AFTER filtering, for convenience
+#' @import dplyr tibble
+#' @export
+#' @return filtered df (tbl_df) containing filtered and/or transformed GxS expression data
+filter_expdata <- function(df, fun = function(x) {max(x)>0}, trans = NULL) {
+    if (is.null(fun) && is.null(trans)) {
+        df
+    } else {
+        filter_gxs_expdata(df, fun = fun, trans = trans)
+    }
+}
 
 #' helper function to transpose a dataframe of expression data
 #' The expectation is that that dataframe will have all-columns-but-one be of the same type
@@ -227,14 +256,60 @@ filter_genes <- function(df,
 #' @param trans (formula) optional formula to apply to expression data
 #' @import sva
 #' @export
-run_combat <- function(df, mod = ~ 1, trans=log1p) {
+run_combat <- function(df, mod = ~ 1, trans=log1p, batch = 'batch') {
     expmat <- expdata_as_matrix(df, trans=trans)
     sampleinfo <- attr(df, 'sampleinfo')
     mm <- model.matrix(mod, data=sampleinfo)
     # re-order to match order of columns in expmat
     sampleinfo <- sampleinfo[match(colnames(expmat), sampleinfo$`_SAMPLE_ID`),]
-    sva::ComBat(as.matrix(expmat), sampleinfo$batch, mm)
+    # result is a GxS matrix 
+    res <- sva::ComBat(as.matrix(expmat), sampleinfo[[batch]], mm)
+    expdata_as_df(res, sampleinfo = sampleinfo)
 }
+
+
+#' Run cibersort on expression data
+#' @export
+run_cibersort <- function(df,
+                          output_file = file.path(tmpdir, 'cibersort_output.tsv'),
+                          error_file = file.path(tmpdir, 'cibersort_errors.txt'),
+                          cibersort_home = '~/cibersort',
+                          gene_list = NULL,
+                          trans = NULL, tmpdir = tempdir(), filter_fun = function(x) {max(x)>0}) {
+    # prepare input matrix, filtered & possibly transformed
+    if (is.null(gene_list)) {
+        lm22_path <- file.path(cibersort_home, 'LM22.txt')
+        lm22_genes <- readr::read_tsv(lm22_path) %>% 
+            dplyr::mutate(`_GENE` = `Gene symbol`)
+        genelist_input <- lm22_path
+    } else {
+        genelist_input <- file.path(tmpdir, 'gene_list.tsv')
+        readr::write_tsv(gene_list, path = genelist_input)
+    }
+    # write matrix to file, in order to call cibersort
+    input_file = file.path(tmpdir, 'cibersort_input.tsv')
+    expmat <- df %>%
+        filter_genes(genelist = lm22_genes, include_random = FALSE) %>%
+        filter_expdata(fun = filter_fun) %>%
+        expdata_as_matrix(trans=trans) %>%
+        write_tsv(input_file)
+    # call cibersort
+    return_code <- try(shell(command = "java",
+                             cmdargs = glue::glue("-Xmx10g -Xms3g",
+                                                  " -jar {cibersort_home}/CIBERSORT.jar",
+                                                  " -M {input_file} -B {genelist_input}",
+                                                  " > {output_file}",
+                                                  " 2> {error_file}")
+                             ))
+    stopifnot(!inherits(return_code, 'try-error'))
+    stopifnot(return_code == 0)
+    # read & format results 
+    cibersort <- readr::read_delim(output_file, delim = '\t', comment=">", trim_ws = TRUE)
+    stopifnot(nrow(cibersort)>0)
+    cibersort.df <- as.data.frame(cibersort %>% dplyr::select(-`X27`, -`Column`)) %>% 
+        dplyr::mutate(`_SAMPLE_ID` = colnames(expmat))
+}
+
 
 #' Function to transpose an GxS df of expression data into SxG
 #' Optionally applies a numerical transformation (`trans`) to each expression value
