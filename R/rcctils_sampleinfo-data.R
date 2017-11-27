@@ -1,4 +1,4 @@
-#' Gene expression matrices for TILs isolated from RCC patients (E-MTAB-5640)
+#' Sample info for TILs isolated from RCC patients (E-MTAB-5640)
 #'
 #' Used as a training dataset for infino & for demonstration/testing purposes.
 #'
@@ -13,7 +13,7 @@
 #'
 #' @docType data
 #'
-#' @usage data(rcctils_expression)
+#' @usage data(rcctils_sampleinfo)
 #'
 #' @format an object of class \code{"tbl_df"}
 #'
@@ -21,4 +21,4 @@
 #'
 #' @references E-MTAB-5640 - RNA sequencing of tumor associated macrophages and T cells in clear cell renal cell carcinoma
 #' (\href{https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-5640/}{ArrayExpress})
-"rcctils_expression"
+"rcctils_sampleinfo"
