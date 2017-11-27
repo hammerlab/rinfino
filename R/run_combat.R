@@ -261,18 +261,17 @@ run_pca <- function(df, use_ggplot=TRUE, trans=log1p, group = 'batch', colour = 
 
     # merge in sampleinfo (sample_id & batch)
     sampleinfo <- attr(df, 'sampleinfo')
-    tdf <- tdf %>%
-        dplyr::left_join(sampleinfo, by = '_SAMPLE_ID')
 
     # run pca
-    pca <- prcomp(tdf %>% dplyr::select(-`_SAMPLE_ID`, -sample_id, -batch),
+    pca <- prcomp(tdf %>% dplyr::select(-`_SAMPLE_ID`),
                   center = TRUE,
                   scale. = TRUE)
 
     if (use_ggplot) {
         pcadf <- tbl_df(pca$x) %>%
-            bind_cols(sampleinfo)
-        pcaplot <- ggplot2::ggplot(pcadf, ggplot2::aes_(x = 'PC1', y = 'PC2', group = group, colour = colour, ...)) +
+            bind_cols(tdf %>% dplyr::select(`_SAMPLE_ID`)) %>%
+            dplyr::left_join(sampleinfo, by = '_SAMPLE_ID')
+        pcaplot <- ggplot2::ggplot(pcadf, ggplot2::aes_string(x = 'PC1', y = 'PC2', group = group, colour = colour, ...)) +
             ggplot2::geom_point()
         print(pcaplot)
     } else {
