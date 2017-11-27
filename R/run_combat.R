@@ -269,38 +269,39 @@ run_combat <- function(df, mod = ~ 1, trans=log1p, batch = 'batch') {
 
 
 #' Run cibersort on expression data
+#' @import Rserve glue readr dplyr 
 #' @export
 run_cibersort <- function(df,
                           output_file = file.path(tmpdir, 'cibersort_output.tsv'),
                           error_file = file.path(tmpdir, 'cibersort_errors.txt'),
                           cibersort_home = '~/cibersort',
-                          gene_list = NULL,
+                          training_data = NULL,
                           trans = NULL, tmpdir = tempdir(), filter_fun = function(x) {max(x)>0}) {
     # prepare input matrix, filtered & possibly transformed
-    if (is.null(gene_list)) {
+    if (is.null(training_data)) {
         lm22_path <- file.path(cibersort_home, 'LM22.txt')
         lm22_genes <- readr::read_tsv(lm22_path) %>% 
             dplyr::mutate(`_GENE` = `Gene symbol`)
-        genelist_input <- lm22_path
-    } else {
-        genelist_input <- file.path(tmpdir, 'gene_list.tsv')
-        readr::write_tsv(gene_list, path = genelist_input)
+        training_input <- lm22_path
     }
     # write matrix to file, in order to call cibersort
     input_file = file.path(tmpdir, 'cibersort_input.tsv')
     expmat <- df %>%
         filter_genes(genelist = lm22_genes, include_random = FALSE) %>%
-        filter_expdata(fun = filter_fun) %>%
-        expdata_as_matrix(trans=trans) %>%
-        write_tsv(input_file)
+        filter_expdata(fun = filter_fun, trans = trans) %>%
+        dplyr::rename(Gene_symbols = `_GENE`) %>%
+        readr::write_tsv(path = input_file)
     # call cibersort
+    cat(glue::glue("Running cibersort in {tmpdir}"))
+    Rserve::Rserve(args='--no-save')
     return_code <- try(shell(command = "java",
                              cmdargs = glue::glue("-Xmx10g -Xms3g",
                                                   " -jar {cibersort_home}/CIBERSORT.jar",
-                                                  " -M {input_file} -B {genelist_input}",
+                                                  " -M {input_file} -B {training_input}",
                                                   " > {output_file}",
                                                   " 2> {error_file}")
                              ))
+    shell(command = 'pkill', cmdargs = "-9 Rserve")
     stopifnot(!inherits(return_code, 'try-error'))
     stopifnot(return_code == 0)
     # read & format results 
@@ -309,6 +310,17 @@ run_cibersort <- function(df,
     cibersort.df <- as.data.frame(cibersort %>% dplyr::select(-`X27`, -`Column`)) %>% 
         dplyr::mutate(`_SAMPLE_ID` = colnames(expmat))
 }
+
+#' Helper function to load lm22 genes from cibersort_home
+#' and prepare in format for `filter_genes`
+#' @param cibersort_home (str) path to cibersort home dir
+#' @export
+load_lm22_genes <- function(cibersort_home = '~/cibersort') {
+        lm22_path <- file.path(cibersort_home, 'LM22.txt')
+        lm22_genes <- readr::read_tsv(lm22_path) %>% 
+            dplyr::mutate(`_GENE` = `Gene symbol`)
+}
+
 
 
 #' Function to transpose an GxS df of expression data into SxG
