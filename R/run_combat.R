@@ -234,6 +234,8 @@ filter_genes <- function(df,
                          n_genes = 900,
                          genelist = rinfino::genelist,
                          include_random = TRUE) {
+    if (is.null(genelist))
+        return(df)
     dff <- df %>% dplyr::semi_join(genelist, by = '_GENE')
     if (include_random) {
         # select random set of genes to get to desired `n_genes`
@@ -292,6 +294,7 @@ test_cibersort <- function(tmpdir = tempdir(), output_file = file.path(tmpdir, '
 #' @export
 execute_cibersort <- function(input_file, 
                               output_file,
+                              absolute_mode = FALSE,
                               tmpdir = tempdir(),
                               cibersort_home = '~/cibersort',
                               training_input = file.path(cibersort_home, 'LM22.txt'),
@@ -300,21 +303,21 @@ execute_cibersort <- function(input_file,
     cat(glue::glue("Running cibersort in {tmpdir}"))
     cat("\n")
     shell(command = 'R', cmdargs = glue::glue('CMD Rserve --no-save > {rserve_log} 2>&1'))
-    #Rserve::Rserve(args='--save')
+    cmdargs <- glue::glue("-Xmx10g -Xms3g",
+                          " -jar {cibersort_home}/CIBERSORT.jar",
+                          " -M {input_file} -B {training_input}",
+                          "{ifelse(absolute_mode == TRUE, ' -A', '')}",
+                          " > {output_file}",
+                          " 2> {error_file}")
     # uses e1071 package
     return_code <- try(shell(command = "java",
-                             cmdargs = glue::glue("-Xmx10g -Xms3g",
-                                                  " -jar {cibersort_home}/CIBERSORT.jar",
-                                                  " -M {input_file} -B {training_input}",
-                                                  " > {output_file}",
-                                                  " 2> {error_file}")
-                             ))
+                             cmdargs = cmdargs))
     shell(command = 'pkill', cmdargs = "-9 Rserve")
     if (inherits(return_code, 'try-error') || return_code != 0) {
         cat("cibersort stderr:\n")
-        writeLines(readLines(error_file))
+        try(writeLines(readLines(error_file)))
         cat("rserve log:\n")
-        writeLines(readLines(rserve_log))
+        try(writeLines(readLines(rserve_log)))
         stop("Error executing cibersort")
     }
     cibersort <- suppressWarnings(readr::read_delim(output_file, delim = '\t', comment=">", trim_ws = TRUE,
@@ -331,8 +334,42 @@ execute_cibersort <- function(input_file,
         stop("No cibersort results.")
     }
     cat("Cibersort completed.\n")
-    as.data.frame(cibersort) %>% dplyr::select(-`X27`, -`Column`)
+    cibersort <- as.data.frame(cibersort) %>% dplyr::select(-`X27`, -`Column`)
+    cibersort
 }
+
+
+#' Transform 'Absolute' mode of cibersort results to relative proportions
+#' @param df (tbl_df or data.frame) cibersort results formatted by execute_cibersort
+#' @return df containing relative proprtions (with absolute score) for each immune cell type
+#' @import dplyr tidyr
+#' @export
+transform_cibersort_to_relative <- function(df) {
+    if (!("Absolute score" %in% names(df)))
+		stop("Column 'Absolute score' not found - are you sure this was run using `absolute_mode = TRUE`?")
+
+	cibersort_long <- 
+	  df %>% 
+	  tidyr::gather(cell_type, proportion, -`_SAMPLE_ID`, -`Absolute score`, -`P-value`, -`Pearson Correlation`)
+
+	# Note that proportions no longer sum to 1; instead they sum to 'Absolute score'
+	stopifnot(cibersort_long %>%
+				  dplyr::group_by(`_SAMPLE_ID`, `Absolute score`) %>%
+				  dplyr::summarise(total = sum(proportion)) %>% 
+				  dplyr::ungroup() %>% 
+				  dplyr::filter(total != `Absolute score`) %>% nrow()
+			  == 0)
+
+	# derive relative proportions for each cell type
+	cibersort_long <- cibersort_long %>%
+		dplyr::mutate(relative_proportion = proportion / `Absolute score`)
+
+	cibersort <- cibersort_long %>%
+		dplyr::select(-proportion) %>%
+		tidyr::spread(key = cell_type, value = relative_proportion)
+}
+
+
 
 #' Run cibersort on expression data
 #' @import Rserve glue readr dplyr 
@@ -340,34 +377,48 @@ execute_cibersort <- function(input_file,
 run_cibersort <- function(df,
                           output_file = file.path(tmpdir, 'cibersort_output.tsv'),
                           error_file = file.path(tmpdir, 'cibersort_errors.txt'),
+                          absolute_mode = FALSE,
                           cibersort_home = '~/cibersort',
                           training_data = NULL,
-                          trans = NULL, tmpdir = tempdir(), filter_fun = NULL) {
-    # prepare input matrix, filtered & possibly transformed
-    if (is.null(training_data)) {
-        lm22_path <- file.path(cibersort_home, 'LM22.txt')
-        lm22_genes <- readr::read_tsv(lm22_path,
-                                      col_types = cols(.default = col_double(),
-                                                      `Gene symbol` = col_character()
-                                                       )) %>% 
-            dplyr::mutate(`_GENE` = `Gene symbol`)
-        training_input <- lm22_path
+                          genelist = NULL,
+                          trans = NULL, 
+                          tmpdir = tempdir(),
+                          filter_fun = NULL) {
+    # default options if provided data are NULL
+    if (!is.null(genelist)) {
+        if (absolute_mode == FALSE) {
+            genelist <- load_lm22_genes()
+        }
     }
+    if (is.null(training_data)) {
+        training_input <- file.path(cibersort_home, 'LM22.txt')
+    } else {
+        stop('custom training data not yet supported')
+        ## TODO generate signature matrix (call another function)
+        ## save signature matrix as training_input
+    }
+
+    # prepare input matrix, filtered & possibly transformed
     # write matrix to file, in order to call cibersort
     input_file = file.path(tmpdir, 'cibersort_input.tsv')
     expmat <- df %>%
-        filter_genes(genelist = lm22_genes, include_random = FALSE) %>%
+        filter_genes(genelist = genelist, include_random = FALSE) %>%
         filter_expdata(fun = filter_fun, trans = trans) %>%
         dplyr::rename(Gene_symbols = `_GENE`) %>%
         readr::write_tsv(path = input_file)
     # execute cibersort
     cibersort <- execute_cibersort(tmpdir=tmpdir, cibersort_home=cibersort_home, 
                       input_file=input_file, training_input=training_input,
-                      output_file=output_file, error_file=error_file)
+                      output_file=output_file, error_file=error_file, absolute_mode=absolute_mode)
     # read & format results 
-    cibersort.df <- cibersort %>% 
+    cibersort <- cibersort %>% 
         dplyr::mutate(`_SAMPLE_ID` = colnames(expmat)[-1]) %>%
         dplyr::select(`_SAMPLE_ID`, one_of(names(cibersort)))
+    if (absolute_mode == TRUE) {
+        # reformat cibersort values to be proportions for consistency
+        cibersort <- transform_cibersort_to_relative(cibersort)
+    }
+    cibersort
 }
 
 #' Helper function to load lm22 genes from cibersort_home

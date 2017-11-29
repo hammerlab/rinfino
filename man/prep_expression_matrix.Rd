@@ -6,8 +6,8 @@
 given a directory containing kallisto output (one folder per sample)}
 \usage{
 prep_expression_matrix(root, output_arg, skip_missing = TRUE,
-  cohort = basename(root), metric = "scaledTPM", by = "Gene_symbol",
-  by_gene = TRUE, suffix = "tsv",
+  cohort = basename(root), metric = "no", abundanceCol = "TPM",
+  by = "Gene_symbol", by_gene = TRUE, suffix = "tsv",
   filename = glue::glue("abundance.{suffix}"),
   output_writer = readr::write_tsv)
 }
@@ -18,7 +18,7 @@ prep_expression_matrix(root, output_arg, skip_missing = TRUE,
 
 \item{skip_missing}{(bool) whether to report & ignore directories not containing output}
 
-\item{metric}{(chr) which metric to capture from kallisto (see `?tximport` for details)}
+\item{metric}{(chr) which metric to capture from kallisto. One of 'scaledTPM', 'no', (see `?tximport` for details)}
 
 \item{by}{(chr) description / name for column in output matrix containing gene or transcript}
 

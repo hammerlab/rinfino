@@ -4,9 +4,10 @@
 \alias{execute_cibersort}
 \title{Execute cibersort using Rserve}
 \usage{
-execute_cibersort(input_file, output_file, tmpdir = tempdir(),
-  cibersort_home = "~/cibersort", training_input = file.path(cibersort_home,
-  "LM22.txt"), rserve_log = file.path(tmpdir, "Rserve_log.txt"),
+execute_cibersort(input_file, output_file, absolute_mode = FALSE,
+  tmpdir = tempdir(), cibersort_home = "~/cibersort",
+  training_input = file.path(cibersort_home, "LM22.txt"),
+  rserve_log = file.path(tmpdir, "Rserve_log.txt"),
   error_file = file.path(tmpdir, "cibersort_errors.txt"))
 }
 \arguments{

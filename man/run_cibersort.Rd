@@ -6,7 +6,8 @@
 \usage{
 run_cibersort(df, output_file = file.path(tmpdir, "cibersort_output.tsv"),
   error_file = file.path(tmpdir, "cibersort_errors.txt"),
-  cibersort_home = "~/cibersort", training_data = NULL, trans = NULL,
+  absolute_mode = FALSE, cibersort_home = "~/cibersort",
+  training_data = NULL, genelist = NULL, trans = NULL,
   tmpdir = tempdir(), filter_fun = NULL)
 }
 \description{
