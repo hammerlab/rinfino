@@ -4,7 +4,7 @@
 #' @param root (chr) filepath to 'root' directory containing kallisto output
 #' @param output_arg (chr) argument to `output_writer`, typically the filename to be written
 #' @param skip_missing (bool) whether to report & ignore directories not containing output
-#' @param metric (chr) which metric to capture from kallisto (see `?tximport` for details)
+#' @param metric (chr) which metric to capture from kallisto. One of 'scaledTPM', 'no', (see `?tximport` for details)
 #' @param by (chr) description / name for column in output matrix containing gene or transcript
 #' @param by_gene (bool) whether to organize results by gene (TRUE) or transcript (FALSE)
 #' @param suffix (chr) file suffix to read in (either `tsv` or `h5` -- h5 gives errors on some platforms)
@@ -15,7 +15,8 @@
 prep_expression_matrix <- function(root, output_arg,
                                    skip_missing=TRUE,
                                    cohort = basename(root),
-                                   metric = 'scaledTPM',
+                                   metric = 'no',
+                                   abundanceCol = 'TPM',
                                    by = 'Gene_symbol',
                                    by_gene = TRUE,
                                    suffix = 'tsv',
@@ -82,10 +83,10 @@ prep_expression_matrix <- function(root, output_arg,
     result_files
 
     # Import and reduce
-    txi <- tximport::tximport(paste(tmpdir, result_files, sep="/"), type="kallisto", countsFromAbundance = metric, txOut = TRUE)
+    txi <- tximport::tximport(paste(tmpdir, result_files, sep="/"), type="kallisto", txOut = TRUE, abundanceCol = abundanceCol)
 
     if (by_gene) {
-        txi.sum <- tximport::summarizeToGene(txi, t2g)
+        txi.sum <- tximport::summarizeToGene(txi, t2g, countsFromAbundance = metric)
         expression <- txi.sum$counts
     } else {
         expression <- txi$counts
