@@ -23,7 +23,7 @@ run_estimate <- function(expdf, tmpdir = tempdir(),
 	close(input_file)
     # run ESTIMATE and save the results into another GCT file
     # for some reason this needs to be in namespace (isn't found otherwise)
-    SI_geneset <- estimate::SI_geneset
+    data(SI_geneset, package='estimate') # has to be in globalenv to work, apparentlty
     estimate::estimateScore(input_filename, output.ds = output_filename, platform = "illumina")
     # read results back into dataframe
     res <- readr::read_tsv(output_filename, comment="#", skip=1) %>%
