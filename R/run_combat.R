@@ -22,7 +22,7 @@ load_expdata <- function(path, gene_col='Gene_symbol', data_loader=readr::read_t
 
     # filter and/or transform data on load
     if (!is.null(filter) || !is.null(trans)) {
-        df <- filter_gxs_expdata(df, fun = filter, trans = trans)
+        df <- filter_expdata(df, fun = filter, trans = trans)
     }
 
     # annotate sampleinfo

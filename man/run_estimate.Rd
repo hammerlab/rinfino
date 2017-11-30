@@ -6,7 +6,20 @@
 \usage{
 run_estimate(expdf, tmpdir = tempdir(), input_filename = file.path(tmpdir,
   "estimate_input.gct"), output_filename = file.path(tmpdir,
-  "estimate_output.gct"))
+  "estimate_output.gct"), trans = NULL, filter_fun = NULL)
+}
+\arguments{
+\item{expdf}{(tbl_df or data.frame) GxS expression data with sampleinfo attr}
+
+\item{tmpdir}{(chr) optional path to working directory in which to execute estimate}
+
+\item{input_filename}{(chr) optional full path to input file for estimate}
+
+\item{output_filename}{(chr) optional full path to output file for estimate (raw, unprocessed)}
+
+\item{trans}{(function) optional transform to apply to expression data prior to computing ESTIMATE}
+
+\item{filter_fun}{(function) optional filter to apply to expression data, based on row-wise values}
 }
 \description{
 Run estimate on expression data
