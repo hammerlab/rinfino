@@ -13,6 +13,7 @@
 #' @param ... extra args to data_loader
 #' @return tbl_df containing expression data, with columns `_SAMPLE_ID` and `_BATCH`
 #' @import dplyr readr stringr purrrlyr
+#' @importFrom magrittr %>%
 #' @export
 load_expdata <- function(path, gene_col='Gene_symbol', data_loader=readr::read_tsv, batch=1,
                          filter=NULL, trans=NULL, ...) {
@@ -39,6 +40,7 @@ load_expdata <- function(path, gene_col='Gene_symbol', data_loader=readr::read_t
 #' @param fun (function) function to apply to sample-id column names, and attributes
 #' @return transformed expdata object
 #' @import dplyr
+#' @importFrom magrittr %>%
 #' @export
 transform_sampleid <- function(expdata, fun) {
   names(expdata)[-1] <- fun(names(expdata)[-1]) # TODO filter by name, not position
@@ -54,6 +56,7 @@ transform_sampleid <- function(expdata, fun) {
 #' @param df (tbl_df or data.frame) sample-specific info to be merged in with sampleinfo
 #' @param sample_id (str) name of column in new sampleinfo containing `_SAMPLE_ID`
 #' @import dplyr
+#' @importFrom magrittr %>%
 #' @export 
 update_sampleinfo <- function(expdata, df, sample_id = '_SAMPLE_ID') {
     sampleinfo <- attr(expdata, 'sampleinfo')
@@ -76,6 +79,7 @@ update_sampleinfo <- function(expdata, df, sample_id = '_SAMPLE_ID') {
 #' @param ... other params to \code{load_expdata}, each of which can be a vector or singleton
 #' @return list of imported dfs returned by load_expdata
 #' @import purrr dplyr
+#' @importFrom magrittr %>%
 #' @export
 load_all_expdata <- function(path, batch=NULL, ...) {
     if (is.null(batch))
@@ -91,6 +95,7 @@ load_all_expdata <- function(path, batch=NULL, ...) {
 #' @param fill (value or NULL) how to fill in NA values, if at all
 #' @param filter (function) function to apply to rows, filtering genes/transcripts from result
 #' @import purrr dplyr
+#' @importFrom magrittr %>%
 #' @export
 merge_expdata <- function(dflist, fill=NULL, filter=function(x) {max(x) > 0}) {
     df <- dflist %>%
@@ -109,6 +114,7 @@ merge_expdata <- function(dflist, fill=NULL, filter=function(x) {max(x) > 0}) {
 #' @param sampleinfo (tbL_df or data.frame) sampleinfo with `_SAMPLE_ID` column corresponding to column names in expmat
 #' @return expdata (tbl_df) containing expression data, with sampleinfo attribute
 #' @import tibble
+#' @importFrom magrittr %>%
 #' @export
 expdata_as_df <- function(expmat, sampleinfo) {
     expdata <- as.data.frame(expmat) %>%
@@ -120,6 +126,7 @@ expdata_as_df <- function(expmat, sampleinfo) {
 #' @param df (tbl_df or data.frame) a GxS data frame containing expression data
 #' @param trans (function) optional transformation to apply to values in matrix
 #' @import dplyr
+#' @importFrom magrittr %>%
 #' @return matrix of expression data, posssibly transformed values
 #' @export
 expdata_as_matrix <- function(df, trans=NULL) {
@@ -142,6 +149,7 @@ expdata_as_matrix <- function(df, trans=NULL) {
 #'               returns a boolean value (TRUE: keep, FALSE: discard)
 #' @param trans (function) optional transformation to apply to expression data AFTER filtering, for convenience
 #' @import dplyr tibble
+#' @importFrom magrittr %>%
 #' @return filtered df (tbl_df) containing filtered and/or transformed GxS expression data
 filter_gxs_expdata <- function(df, fun=function(x) {max(x)>0}, trans=NULL) {
     expmat <- as.matrix(df %>% dplyr::select(-`_GENE`))
@@ -170,6 +178,7 @@ filter_gxs_expdata <- function(df, fun=function(x) {max(x)>0}, trans=NULL) {
 #'               returns a boolean value (TRUE: keep, FALSE: discard)
 #' @param trans (function) optional transformation to apply to expression data AFTER filtering, for convenience
 #' @import dplyr tibble
+#' @importFrom magrittr %>%
 #' @export
 #' @return filtered df (tbl_df) containing filtered and/or transformed GxS expression data
 filter_expdata <- function(df, fun = function(x) {max(x)>0}, trans = NULL) {
@@ -193,6 +202,7 @@ filter_expdata <- function(df, fun = function(x) {max(x)>0}, trans = NULL) {
 #' @param current_colname (string) name of field to create after transform, holding values of current colnames
 #' @param current_rowname (string) name of field existing in df, holding current rownames
 #' @import dplyr tibble
+#' @importFrom magrittr %>%
 #' @return transposed df, of type tbl_df
 #' @export
 transpose_expdata <- function(df, trans=NULL, current_colname, current_rowname) {
@@ -228,6 +238,7 @@ transpose2gxs <- function(df, trans=NULL) {
 #' @param genelist (tbl_df) contains column `_GENE` containing list of genes to filter to
 #' @param include_random (bool) whether to sample from remaining genes to reach `n_genes`
 #' @import dplyr
+#' @importFrom magrittr %>%
 #' @return tbl_df containing filtered expression data, with sampleinfo attr
 #' @export
 filter_genes <- function(df,
@@ -343,6 +354,7 @@ execute_cibersort <- function(input_file,
 #' @param df (tbl_df or data.frame) cibersort results formatted by execute_cibersort
 #' @return df containing relative proprtions (with absolute score) for each immune cell type
 #' @import dplyr tidyr
+#' @importFrom magrittr %>%
 #' @export
 transform_cibersort_to_relative <- function(df) {
     if (!("Absolute score" %in% names(df)))
@@ -373,6 +385,7 @@ transform_cibersort_to_relative <- function(df) {
 
 #' Run cibersort on expression data
 #' @import Rserve glue readr dplyr 
+#' @importFrom magrittr %>%
 #' @export
 run_cibersort <- function(df,
                           output_file = file.path(tmpdir, 'cibersort_output.tsv'),
@@ -424,6 +437,8 @@ run_cibersort <- function(df,
 #' Helper function to load lm22 genes from cibersort_home
 #' and prepare in format for `filter_genes`
 #' @param cibersort_home (str) path to cibersort home dir
+#' @importFrom magrittr %>%
+#' @import dplyr readr
 #' @export
 load_lm22_genes <- function(cibersort_home = '~/cibersort') {
         lm22_path <- file.path(cibersort_home, 'LM22.txt')
@@ -451,6 +466,7 @@ transpose2sxg <- function(df, trans=NULL) {
 #' @param trans (function) if provided, transform expression data prior to PCA
 #' @return pca object for each sample run (columns in the provided df)
 #' @import dplyr ggplot2 txtplot
+#' @importFrom magrittr %>%
 #' @export
 run_pca <- function(df, use_ggplot=TRUE, trans=log1p, group = 'batch', colour = 'batch', ...) {
     # transform df to SxG orientation, possibly applying `trans` function
