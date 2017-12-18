@@ -9,7 +9,8 @@ singleorigin_expression <- rinfino::load_expdata(system.file("data-raw",
                                                  gene_col = 'gene_name')
 
 singleorigin_sampleinfo <- readr::read_tsv(system.file('data-raw', 'singleorigin_data.map_sample_to_celltype.txt', package = 'rinfino')) %>%
-  dplyr::mutate(sample_name = as.character(sample_name))
+  dplyr::mutate(sample_name = as.character(sample_name)) %>%
+  tidyr::separate(celltype, into = c('rollup'), sep = '_', remove = FALSE, extra = 'drop')
 
 singleorigin_expression <- rinfino::update_sampleinfo(expdata = singleorigin_expression,
                                                       df = singleorigin_sampleinfo,
