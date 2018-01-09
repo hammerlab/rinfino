@@ -253,10 +253,10 @@ filter_genes <- function(df,
         n_random <- n_genes - nrow(dff)
         random_genes <- df %>%
             dplyr::select(`_GENE`) %>%
-            dplyr::anti_join(genelist, by = `_GENE`) %>%
+            dplyr::anti_join(genelist, by = '_GENE') %>%
             dplyr::sample_n(n_random)
         genelist <- dplyr::bind_rows(genelist, random_genes)
-        dff <- df %>% dplyr::semi_join(genelist, by = `_GENE`)
+        dff <- df %>% dplyr::semi_join(genelist, by = '_GENE')
     }
     structure(dff, sampleinfo = attr(df, 'sampleinfo'))
 }
