@@ -494,3 +494,123 @@ run_pca <- function(df, use_ggplot=TRUE, trans=log1p, group = 'batch', colour = 
     pca
 }
 
+
+#' filter expression data and sample info to desired batches
+#'
+#' @param df (tbl_df) SxG df with expression data with columns indicating sample IDs, where sampleinfo stored in sampleinfo attr
+#' @param batch_names (character vector) names of batches to keep
+#' @return SxG df with expression data and sampleinfo in sampleinfo attr
+#' @import dplyr 
+#' @export
+filter_batch <- function(df, batch_names) {
+  filtered_sampleinfo <-
+    attr(df, 'sampleinfo') %>%
+    dplyr::filter(batch %in% batch_names)
+
+  # filter to a certain set of samples, and keep the _GENE identifier column
+  filtered_expression <-
+    df %>%
+    dplyr::select(`_GENE`, one_of(filtered_sampleinfo$`_SAMPLE_ID`))
+
+  structure(filtered_expression, sampleinfo = filtered_sampleinfo)
+}
+
+#' convert celltype column in sampleinfo to xdata design matrix
+#' requires celltype column to have no NAs
+#' run filter_batch first to control which batches will go into this design matrix
+#'
+#' @param df (tbl_df) SxG df where sampleinfo is optionally stored in sampleinfo attr
+#' @param sampleinfo optionally pass in sampleinfo here
+#' @param batch_names (character vector) names of batches to keep
+#' @return SxC design matrix
+sampleinfo_to_xdata <- function(df, sampleinfo=NULL) {
+  if (is.null(sampleinfo)) {
+    sampleinfo = attr(df, 'sampleinfo')
+  }
+
+  # confirm cell type defined for every sample
+  stopifnot(!any(is.na(sampleinfo$celltype)))
+
+  # make design matrix
+  design_matrix = model.matrix(~ celltype - 1, sampleinfo)
+
+  # remove "celltype" prefix
+  colnames(design_matrix) = gsub('^celltype', '', colnames(design_matrix))
+
+  design_matrix
+}
+
+#' Convert Ensembl transcript IDs to gene names
+#' Useful when processing existing data that didn't come in through prep_expression_matrix.R
+#' If multiple transcripts map to the same gene, their expression values are summed (as in tximport's summarize-to-gene behavior)
+#'
+#' @param df (tbl_df) SxG df where sampleinfo is stored in sampleinfo attr
+#' @return SxG df with expression data and _GENE column edited
+#' @import dplyr biomaRt
+#' @export
+map_gene_names <- function(df) {
+  # prepare annotations from biomart
+  mart <- biomaRt::useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset="hsapiens_gene_ensembl", host='ensembl.org')
+  t2g <- biomaRt::getBM(attributes=c("ensembl_transcript_id", "external_gene_name"), mart=mart)
+  t2g <- dplyr::rename(t2g, target_id=ensembl_transcript_id, ext_gene=external_gene_name)
+  
+  df_annotated = df %>% inner_join(t2g, by=c("_GENE" = "target_id"))
+
+  # group by gene name and sum
+  df_annotated_summed = df_annotated %>%
+    dplyr::select(-`_GENE`) %>%  # remove transcript IDs
+    group_by(ext_gene) %>% 
+    summarise_all(funs(sum)) %>% 
+    rename(`_GENE`=ext_gene)     # rename the gene name column to _GENE
+  
+  structure(df_annotated_summed, sampleinfo = attr(df, "sampleinfo"))
+
+}
+
+#' Extract expression data and sampleinfo for all known samples (those where celltype is defined)
+#'
+#' @param df (tbl_df) SxG df where sampleinfo is stored in sampleinfo attr
+#' @param expression_fname filename to write expression data
+#' @param xdata_fname filename to write design matrix from sample info
+#' @import dplyr tidyr
+#' @export
+write_known_samples <- function(df, expression_fname, xdata_fname) {
+  # filter sampleinfo to known samples: every sample where celltype is defined
+  filtered_sampleinfo <-
+    attr(df, 'sampleinfo') %>%
+    tidyr::drop_na(celltype)
+
+  # filter expression to a certain set of samples, and keep the _GENE identifier column
+  filtered_expression <-
+    df %>%
+    dplyr::select(`_GENE`, one_of(filtered_sampleinfo$`_SAMPLE_ID`))
+
+  # create design matrix
+  filtered_xdata = sampleinfo_to_xdata(filtered_expression, filtered_sampleinfo)
+
+  # write to disk
+  write.table(expdata_as_matrix(filtered_expression), file=expression_fname, sep="\t")
+  write.table(filtered_xdata, file=xdata_fname, sep="\t")
+}
+
+#' Extract expression data and sampleinfo for all unknown samples (those where celltype is undefined)
+#'
+#' @param df (tbl_df) SxG df where sampleinfo is stored in sampleinfo attr
+#' @param expression_fname filename to write expression data
+#' @import dplyr
+#' @export
+write_unknown_samples <- function(df, expression_fname) {
+  # identify the unknown samples -- where celltype undefined
+  filtered_sampleinfo <-
+    attr(df, 'sampleinfo') %>%
+    dplyr::filter(!complete.cases(.$celltype))
+
+  # filter expression to those samples
+  filtered_expression <-
+    df %>%
+    dplyr::select(`_GENE`, one_of(filtered_sampleinfo$`_SAMPLE_ID`))
+
+  # output expression to disk
+  write.table(expdata_as_matrix(filtered_expression), file=expression_fname, sep="\t")
+}
+
