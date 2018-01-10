@@ -546,12 +546,13 @@ sampleinfo_to_xdata <- function(df, sampleinfo=NULL) {
 #' If multiple transcripts map to the same gene, their expression values are summed (as in tximport's summarize-to-gene behavior)
 #'
 #' @param df (tbl_df) SxG df where sampleinfo is stored in sampleinfo attr
+#' @param ensembl_host ensembl biomart host URL
 #' @return SxG df with expression data and _GENE column edited
 #' @import dplyr biomaRt
 #' @export
-map_gene_names <- function(df) {
+map_gene_names <- function(df, ensembl_host="ensembl.org") {
   # prepare annotations from biomart
-  mart <- biomaRt::useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset="hsapiens_gene_ensembl", host='ensembl.org')
+  mart <- biomaRt::useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset="hsapiens_gene_ensembl", host=ensembl_host)
   t2g <- biomaRt::getBM(attributes=c("ensembl_transcript_id", "external_gene_name"), mart=mart)
   t2g <- dplyr::rename(t2g, target_id=ensembl_transcript_id, ext_gene=external_gene_name)
   

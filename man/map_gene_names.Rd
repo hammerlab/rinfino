@@ -6,10 +6,12 @@
 Useful when processing existing data that didn't come in through prep_expression_matrix.R
 If multiple transcripts map to the same gene, their expression values are summed (as in tximport's summarize-to-gene behavior)}
 \usage{
-map_gene_names(df)
+map_gene_names(df, ensembl_host = "ensembl.org")
 }
 \arguments{
 \item{df}{(tbl_df) SxG df where sampleinfo is stored in sampleinfo attr}
+
+\item{ensembl_host}{ensembl biomart host URL}
 }
 \value{
 SxG df with expression data and _GENE column edited
