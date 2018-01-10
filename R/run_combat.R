@@ -523,6 +523,7 @@ filter_batch <- function(df, batch_names) {
 #' @param sampleinfo optionally pass in sampleinfo here
 #' @param batch_names (character vector) names of batches to keep
 #' @return SxC design matrix
+#' @export
 sampleinfo_to_xdata <- function(df, sampleinfo=NULL) {
   if (is.null(sampleinfo)) {
     sampleinfo = attr(df, 'sampleinfo')
