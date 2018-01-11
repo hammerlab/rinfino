@@ -538,6 +538,9 @@ sampleinfo_to_xdata <- function(df, sampleinfo=NULL) {
   # remove "celltype" prefix
   colnames(design_matrix) = gsub('^celltype', '', colnames(design_matrix))
 
+  # set row names to sample names
+  rownames(design_matrix) = colnames(expdata_as_matrix(df))
+
   design_matrix
 }
 
